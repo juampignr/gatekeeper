@@ -8,7 +8,7 @@
   />
 </p>
 
-> Born at the [Pierre Auger Observatory](https://www.auger.org/) — the
+> Born at the [Pierre Auger Observatory](https://www.auger.org.ar/) — the
 > world's largest cosmic-ray observatory — where it replaced a sprawling
 > port-forwarding perimeter spanning remote detector stations in the
 > Argentinian Pampa. As seen on
