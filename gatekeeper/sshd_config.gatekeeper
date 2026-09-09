@@ -1,0 +1,44 @@
+# Gatekeeper sshd_config — CA-signed certificates only, GoTo ForceCommand
+Include /etc/ssh/sshd_config.d/*.conf
+
+KbdInteractiveAuthentication no
+UsePAM yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+### Start of Gatekeeper configuration
+
+# No passwords, signed public keys only
+PasswordAuthentication no
+PubkeyAuthentication yes
+
+# Plain authorized_keys disabled everywhere — the CA is the single trust root
+AuthorizedKeysFile none
+
+TrustedUserCAKeys /etc/ssh/user_ca_key.pub
+AuthorizedPrincipalsFile /etc/ssh/principals/%u
+
+# Every session runs GoTo
+ForceCommand /usr/local/bin/goto
+
+# Expose the authenticating credential to the ForceCommand (SSH_USER_AUTH)
+ExposeAuthInfo yes
+
+# No forwarding of any kind — GoTo handles routing.
+# Note: if you later want cert-scoped permitopen forwarding, sshd must first
+# allow it here (cert extensions can only restrict what sshd already permits).
+AllowTcpForwarding no
+X11Forwarding no
+AllowAgentForwarding no
+PermitTunnel no
+
+PermitRootLogin prohibit-password
+MaxSessions 4
+Compression no
+LogLevel VERBOSE
+
+ClientAliveCountMax 2
+ClientAliveInterval 60
+
+### End of Gatekeeper configuration

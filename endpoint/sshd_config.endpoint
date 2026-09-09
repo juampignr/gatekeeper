@@ -1,0 +1,48 @@
+# Endpoint sshd_config — accepts only CA-signed certificates
+Include /etc/ssh/sshd_config.d/*.conf
+
+KbdInteractiveAuthentication no
+UsePAM yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+### Start of Gatekeeper endpoint configuration
+
+# No passwords, signed public keys only
+PasswordAuthentication no
+PubkeyAuthentication yes
+
+# Plain authorized_keys disabled — the CA is the single trust root
+AuthorizedKeysFile none
+
+TrustedUserCAKeys /etc/ssh/user_ca_key.pub
+AuthorizedPrincipalsFile /etc/ssh/principals/%u
+
+# No Window Manager forwarding
+X11Forwarding no
+
+# No tunnels or local port forwarding
+AllowTcpForwarding no
+PermitTunnel no
+
+# No ssh-agent forwarding
+AllowAgentForwarding no
+
+# Root only through sudo
+PermitRootLogin prohibit-password
+
+# Max sessions or communication channels per user
+MaxSessions 2
+
+# Disable compression to prevent side-channel attacks
+Compression no
+
+# Increase verbosity for better auditing
+LogLevel VERBOSE
+
+# Disconnect dead clients faster
+ClientAliveCountMax 2
+ClientAliveInterval 60
+
+### End of Gatekeeper endpoint configuration

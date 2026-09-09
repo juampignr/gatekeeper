@@ -1,0 +1,12 @@
+{
+  "db": {
+    "path": "/var/lib/goto/gatekeeper.db"
+  },
+  "gatekeeper": {
+    "address": "gate.example.com",
+    "sshuttleExclude": "203.0.113.10"
+  },
+  "endpointPort": 22,
+  "keysDir": "/etc/goto/keys",
+  "agentDir": "/run/goto"
+}
