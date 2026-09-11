@@ -90,10 +90,6 @@ ssh "root@$GATEKEEPER" bash -s <<EOF
 set -euo pipefail
 chown root:goto $KEYS_DIR/*-cert.pub
 chmod 0640 $KEYS_DIR/*-cert.pub
-# Reload agents so they pick up the fresh certificates
-for unit in \$(systemctl list-units --plain --no-legend 'goto-agent@*' | awk '{print \$1}'); do
-  systemctl restart "\$unit" || true
-done
 EOF
 
 echo "Done. Verify with: ssh root@$GATEKEEPER ssh-keygen -Lf $KEYS_DIR/<role>-cert.pub"

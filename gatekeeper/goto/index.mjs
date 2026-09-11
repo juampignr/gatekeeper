@@ -6,7 +6,6 @@
 // the connection with the matching role credential.
 
 import { spawn } from "child_process";
-import { existsSync } from "fs";
 import Database from "better-sqlite3";
 import chalk from "chalk";
 import inquirer from "inquirer";
@@ -47,7 +46,6 @@ try {
 
 const DB_PATH       = config.db?.path      ?? "/var/lib/goto/gatekeeper.db";
 const KEYS_DIR      = config.keysDir       ?? "/etc/goto/keys";
-const AGENT_DIR     = config.agentDir      ?? "/run/goto";
 const ENDPOINT_PORT = String(config.endpointPort ?? 22);
 const GATE_ADDRESS  = config.gatekeeper?.address ?? "gatekeeper";
 const GATE_EXCLUDE  = config.gatekeeper?.sshuttleExclude ?? GATE_ADDRESS;
@@ -112,8 +110,12 @@ if (isSshuttle) {
   let principals = [];
 
   try {
-    await mkdir(`${tmpdir()}/goto/`, { recursive: true });
-    const sessionTmp = await mkdtemp(`${tmpdir()}/goto/`);
+    // Scoped per-caller UID: a shared /tmp/goto/ would end up owned by
+    // whichever user connects first, permanently locking out every other
+    // user (EACCES on mkdtemp) until an admin manually fixes its permissions.
+    const sessionRoot = `${tmpdir()}/goto-${process.getuid()}`;
+    await mkdir(sessionRoot, { recursive: true, mode: 0o700 });
+    const sessionTmp = await mkdtemp(`${sessionRoot}/`);
     const pubKeyPath = `${sessionTmp}/${basename(userExposedAuth)}.pub`;
 
     await chmod(sessionTmp, 0o700);
@@ -223,22 +225,18 @@ if (isSshuttle) {
     const selfManaged = hostAuthByIp[destination] === true;
     const sshUser = selfManaged && process.env.USER ? process.env.USER : effectiveUser;
 
-    // Role credential access: prefer the per-role ssh-agent socket (works for
-    // non-root callers — OpenSSH's sshkey_perm_ok() fatally rejects direct
-    // reads of keys owned by another UID). Fall back to -i for root/testing.
-    const agentSock = `${AGENT_DIR}/agent-${effectiveUser}.sock`;
-    const sshArgs = ["-p", ENDPOINT_PORT];
-    const env = { ...process.env };
-
-    if (existsSync(agentSock)) {
-      env.SSH_AUTH_SOCK = agentSock;
-    } else {
-      sshArgs.push("-i", `${KEYS_DIR}/${effectiveUser}`);
-    }
-
-    sshArgs.push(`${sshUser}@${destination}`);
+    // Role keys are root:goto 0640. OpenSSH's private-key permission check
+    // ("Permissions ... too open") is self-protective — it only fires when
+    // the file's *owner* loads it with loose permissions — so any minted
+    // user (never the owner; role keys are always owned by root) can read
+    // and use their mapped role key directly. No agent/broker needed.
+    const sshArgs = [
+      "-p", ENDPOINT_PORT,
+      "-i", `${KEYS_DIR}/${effectiveUser}`,
+      `${sshUser}@${destination}`,
+    ];
 
     console.log(chalk.bgGreen(`Connecting to ${sshUser}@${destination}`));
-    spawn("/usr/bin/ssh", sshArgs, { stdio: "inherit", env });
+    spawn("/usr/bin/ssh", sshArgs, { stdio: "inherit", env: process.env });
   }
 }

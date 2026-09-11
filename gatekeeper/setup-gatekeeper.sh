@@ -5,8 +5,8 @@
 #   - Node.js runtime + GoTo (ForceCommand)
 #   - SQLite database with the zone/VM schema (GoTo opens it read-only)
 #   - Hardened sshd_config with CA-only auth and GoTo as ForceCommand
-#   - Role keypairs per zone (and per zone × tech-user)
-#   - Per-role ssh-agent units for non-root role-credential access
+#   - Role keypairs per zone (and per zone × tech-user), root:goto 0640 —
+#     readable directly (ssh -i) by the minted users they're mapped to
 #
 # Zones are fully dynamic: pass any names you want with --zones. Hosts are
 # registered afterwards with add-host.sh on this machine.
@@ -173,8 +173,7 @@ if [[ ! -f /etc/goto/config.json ]]; then
     "sshuttleExclude": "$ADDRESS"
   },
   "endpointPort": 22,
-  "keysDir": "$KEYS_DIR",
-  "agentDir": "/run/goto"
+  "keysDir": "$KEYS_DIR"
 }
 EOF
 fi
@@ -189,14 +188,6 @@ install -o root -g root -m 0750 "$REPO_DIR/endpoint/setup-endpoint.sh" /usr/loca
 # Endpoint payload — setup-endpoint.sh pushes this to targets over SSH
 install -d -o root -g root -m 0755 /usr/local/share/gatekeeper
 install -o root -g root -m 0644 "$REPO_DIR/endpoint/sshd_config.endpoint" /usr/local/share/gatekeeper/sshd_config.endpoint
-
-echo "### Installing per-role agent units ###"
-install -o root -g root -m 0755 "$REPO_DIR/systemd/goto-agent-load" /usr/local/sbin/goto-agent-load
-install -o root -g root -m 0644 "$REPO_DIR/systemd/goto-agent@.service" /etc/systemd/system/goto-agent@.service
-systemctl daemon-reload
-for ROLE in "${ALL_ROLES[@]}"; do
-  systemctl enable --now "goto-agent@$ROLE"
-done
 
 systemctl reload sshd 2>/dev/null || systemctl reload ssh
 

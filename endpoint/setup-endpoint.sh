@@ -11,7 +11,10 @@
 # --local mode (what actually runs on the endpoint; also usable standalone):
 #   creates, for each zone in -z:
 #     <zone>          principals file: <zone>
-#     <zone>-<tech>   principals file: <zone> + <tech>   (per tech user)
+#     <zone>-<tech>   principals file: <zone>, <tech>, <zone>-<tech>
+#                     (the compound line is required — the role cert signed
+#                     by create-role-certs.sh carries <zone>-<tech> as one
+#                     single principal, not <zone> and <tech> separately)
 #   plus the superuser zone user, and installs the CA-only sshd_config.
 #
 # Reverse: add -r to either mode to undo (remote reverse also deletes the
@@ -121,10 +124,13 @@ local_setup() {
     user_add "$z"
     write_principals "$z" "$z"
 
-    # Tech-user variants — cert carries "<zone>" + "<tech>"
+    # Tech-user variants — cert carries the single compound principal
+    # "<zone>-<tech>" (create-role-certs.sh signs the role key with its
+    # filename as one principal, not "<zone>" + "<tech>" separately), so the
+    # principals file must contain that exact compound string to match.
     for t in $(tech_list); do
       user_add "$z-$t"
-      write_principals "$z-$t" "$z" "$t"
+      write_principals "$z-$t" "$z" "$t" "$z-$t"
     done
   done
 

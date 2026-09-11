@@ -170,7 +170,6 @@ gatekeeper/ setup-gatekeeper.sh, add-zone.sh, add-host.sh,
             sshd_config.gatekeeper, goto/
 endpoint/   setup-endpoint.sh, sshd_config.endpoint
 db/         schema.sql
-systemd/    goto-agent@.service, goto-agent-load
 images/     icon.jpg
 ```
 
@@ -206,8 +205,7 @@ cd gatekeeper
 
 `-c` pulls the CA public key straight from the CA VM — no manual copying.
 This initializes the SQLite database, installs GoTo, the hardened
-`sshd_config`, per-zone role keypairs, per-role ssh-agents, and the
-endpoint deployment tooling.
+`sshd_config`, per-zone role keypairs, and the endpoint deployment tooling.
 
 ### 3. CA VM — sign roles, mint users
 
@@ -224,10 +222,11 @@ role name as the certificate principal (`marketing`, `marketing-operator`,
 ...) and with the critical option `source-address=203.0.113.10` (`-i` — the
 Gatekeeper's public IP, so endpoints reject these certs coming from any
 other address), assigns incrementing audit serials from the CA's counter,
-pushes the certificates back to `/etc/goto/keys/`, and restarts the
-per-role agents so they load key + fresh cert. `-g` and `-i` are separate
-because `-g` is just the SSH target (may be a hostname or jump alias) while
-`-i` must be the literal source IP the endpoints will see.
+and pushes the certificates back to `/etc/goto/keys/` — no restart or reload
+needed, GoTo reads each role's key and cert straight off disk per
+connection. `-g` and `-i` are separate because `-g` is just the SSH target
+(may be a hostname or jump alias) while `-i` must be the literal source IP
+the endpoints will see.
 
 Then mint your users:
 
@@ -365,15 +364,21 @@ Compared to mainstream RBAC systems:
 
 ## Operational security notes
 
-- **Role credential exposure model**: role keys are `root:goto 0640` and the
-  per-role agent sockets are `root:goto 0660`, so any `goto`-group member
-  could technically reach any role credential *if they had arbitrary code
-  execution on the Gatekeeper*. They don't: the ForceCommand is the
-  enforcement boundary, and only superuser-zone users get a shell.
-- **Per-role agents exist for a reason**: OpenSSH refuses (fatally, for
-  non-root) to read a private key owned by another UID, so GoTo cannot simply
-  `-i` root-owned keys. Testing as root masks this — the check downgrades to
-  a warning. Always test as a real minted user.
+- **Role credential exposure model**: role keys are `root:goto 0640`, so any
+  `goto`-group member (i.e. any minted user) can read the role key(s) their
+  own certificate maps them to and use it directly via `ssh -i` — that's
+  intentional, not a leak: it's exactly the access GoTo already grants them,
+  with no broker in between. What group membership does *not* grant is
+  reach beyond that mapping, or an interactive shell to go looking: the
+  ForceCommand is the enforcement boundary, and only superuser-zone users
+  get a shell.
+- **Never load role keys as root.** OpenSSH's private-key permission check
+  is self-protective: it only fires when the *file's owner* loads a key
+  with group/other-readable permissions, refusing outright ("Permissions
+  ... too open") on the assumption you're about to expose your own
+  credential. Role keys are owned by `root`, so testing as root will trip
+  this even though a real minted user (always a distinct, non-root account)
+  never owns the file and never hits it. Always test as a real minted user.
 - **SQLite access model**: the database file is `root:goto 0640` and GoTo
   opens it strictly read-only. Keep it that way — group-writable would let
   any zone user grant themselves destinations. All mutations belong in the

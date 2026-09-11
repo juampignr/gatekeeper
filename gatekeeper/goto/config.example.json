@@ -7,6 +7,5 @@
     "sshuttleExclude": "203.0.113.10"
   },
   "endpointPort": 22,
-  "keysDir": "/etc/goto/keys",
-  "agentDir": "/run/goto"
+  "keysDir": "/etc/goto/keys"
 }

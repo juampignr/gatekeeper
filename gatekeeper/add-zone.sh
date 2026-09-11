@@ -1,9 +1,9 @@
 #!/bin/bash
 # add-zone.sh — add a new zone to a running Gatekeeper
 #
-# Creates the zone row, generates the role keypairs (base + tech-user
-# variants), and enables their agents. Role certs still need signing on the
-# CA VM afterwards (create-role-certs.sh).
+# Creates the zone row and generates the role keypairs (base + tech-user
+# variants). Role certs still need signing on the CA VM afterwards
+# (create-role-certs.sh).
 set -euo pipefail
 
 ZONE=""
@@ -70,7 +70,6 @@ for ROLE in "${ROLES[@]}"; do
     chown root:goto "$KEYS_DIR/$ROLE" "$KEYS_DIR/$ROLE.pub"
     chmod 0640 "$KEYS_DIR/$ROLE" "$KEYS_DIR/$ROLE.pub"
   fi
-  systemctl enable --now "goto-agent@$ROLE"
 done
 
 echo
