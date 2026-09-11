@@ -1,10 +1,11 @@
-# 🗝 Gatekeeper: GoTo
+# Gatekeeper
 
 <p align="center">
   <img
     src="./images/icon.jpg"
     alt="The Doors of Durin — Speak, friend, and enter"
     width="300"
+    style="border-radius=20px"
   />
 </p>
 
@@ -15,7 +16,7 @@
 > [Medium](https://medium.com/@juampi.gnr/rbac-over-ssh-yes-you-read-it-right-f71ecf688c22), where the
 > full architecture walkthrough is published.
 
-## What is GoTo?
+## What is Gatekeeper GoTo?
 
 **GoTo** is the **single, authoritative entry point** to your infrastructure.
 
